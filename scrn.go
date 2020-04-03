@@ -3,6 +3,9 @@ package scrn
 import (
         "fmt"
         "os"
+        "sync"
+
+        "golang.org/x/sys/unix"
 )
 
 type Screen struct {}
@@ -30,4 +33,73 @@ func (s *Screen) Print(text string) (n int, err error) {
 func (s *Screen) Printf(format string, a ...interface{}) (n int, err error) {
         text := fmt.Sprintf(format, a...)
         return s.Print(text)
+}
+
+type KeyCode int
+
+var (
+        KeyEsc = KeyCode(int('\033'))
+)
+
+var (
+        watchKeyPressOnce sync.Once
+        c                 chan KeyCode
+        mask              [2]uint64
+)
+
+func KeyPress(code ...KeyCode) <-chan KeyCode {
+        watchKeyPressOnce.Do(func() {
+                c = make(chan KeyCode, 1)
+                termios, err := unix.IoctlGetTermios(0, unix.TCGETS)
+                if err != nil {
+                        panic(err)
+                }
+                termios.Lflag &^= unix.ECHO | unix.ICANON
+                termios.Lflag |= unix.ISIG
+                termios.Cc[unix.VMIN] = 1
+                termios.Cc[unix.VTIME] = 0
+                if err := unix.IoctlSetTermios(0, unix.TCSETS, termios); err != nil {
+                        panic(err)
+                }
+                go func() {
+                        var buf [1]byte
+                        for {
+                                if n, _ := unix.Read(0, buf[:]); n == 0 {
+                                        continue
+                                }
+                                if contains(int(buf[0])) {
+                                        c <- KeyCode(buf[0])
+                                }
+                        }
+                }()
+        })
+        if len(code) == 0 {
+                var max uint64 = 1 << 64 - 1
+                for i := range mask {
+                        mask[i] = max
+                }
+        } else {
+                reset()
+                for _, c := range code {
+                        set(int(c))
+                }
+        }
+        return c
+}
+
+func contains(code int) bool {
+        return (mask[code/64]>>uint(code&63))&1 == 1
+}
+
+func set(code int) {
+        mask[code/64] |= 1 << uint(code&63)
+}
+
+func clear(code int) {
+        mask[code/64] &^= 1 << uint(code&63)
+}
+
+func reset() {
+        var m [2]uint64
+        mask = m
 }
