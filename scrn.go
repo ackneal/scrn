@@ -35,6 +35,14 @@ func (s *Screen) Printf(format string, a ...interface{}) (n int, err error) {
         return s.Print(text)
 }
 
+func GetSize() (width, height int, err error) {
+        ws, err := unix.IoctlGetWinsize(0, unix.TIOCGWINSZ)
+        if err != nil {
+                return -1, -1, err
+        }
+        return int(ws.Col), int(ws.Row), nil
+}
+
 type KeyCode int
 
 var (
