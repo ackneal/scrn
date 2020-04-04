@@ -10,11 +10,11 @@ import (
 
 type Screen struct {}
 
-func (s *Screen) Save() {
+func (s *Screen) Open() {
         os.Stdout.WriteString("\033[?1049h")
 }
 
-func (s *Screen) Restore() {
+func (s *Screen) Close() {
         os.Stdout.WriteString("\033[?1049l")
 }
 
