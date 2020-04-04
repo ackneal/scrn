@@ -45,7 +45,7 @@ func GetSize() (width, height int, err error) {
 
 type KeyCode int
 
-var (
+const (
         KeyEsc = KeyCode(int('\033'))
 )
 
