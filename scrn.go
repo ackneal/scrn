@@ -103,10 +103,6 @@ func set(code int) {
         mask[code/64] |= 1 << uint(code&63)
 }
 
-func clear(code int) {
-        mask[code/64] &^= 1 << uint(code&63)
-}
-
 func reset() {
         var m [2]uint64
         mask = m
