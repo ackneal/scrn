@@ -4,6 +4,7 @@ import (
         "fmt"
         "os"
         "sync"
+        "unicode"
 
         "golang.org/x/sys/unix"
 )
@@ -50,9 +51,10 @@ const (
 )
 
 var (
-        watchKeyPressOnce sync.Once
-        c                 chan KeyCode
-        mask              [2]uint64
+        KeyPressCaseSensitive bool
+        watchKeyPressOnce     sync.Once
+        c                     chan KeyCode
+        mask                  [2]uint64
 )
 
 func KeyPress(code ...KeyCode) <-chan KeyCode {
@@ -89,10 +91,29 @@ func KeyPress(code ...KeyCode) <-chan KeyCode {
         } else {
                 reset()
                 for _, c := range code {
-                        set(int(c))
+                        add(c)
                 }
         }
         return c
+}
+
+func add(k KeyCode) {
+        if uint32(k) > unicode.MaxASCII {
+                return
+        }
+        set(int(k))
+        r := rune(k)
+        if KeyPressCaseSensitive && !unicode.IsLetter(r) {
+                return
+        }
+        if unicode.IsLower(r) {
+                set(int(unicode.ToUpper(r)))
+                return
+        }
+        if unicode.IsUpper(r) {
+                set(int(unicode.ToLower(r)))
+                return
+        }
 }
 
 func contains(code int) bool {
